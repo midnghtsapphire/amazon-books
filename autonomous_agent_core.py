@@ -232,3 +232,121 @@ def run_single_pipeline_cycle():
             f"directly on modern anxieties around the trending topic: '{nudge['trend_hook']}'.\n"
             f"Weave this solution into a multi-part fiction fable or highly detailed technical essay matching these dimensions:\n"
             f"- Narrative Focus: Base deep thematic roots on {nudge['creative_theme']}\n"
+f"- Technical Stack Architecture: Ground all logistical components inside {nudge['technical_vector']}\n"
+f"- Compliance Framework: Align operational parameters with {nudge['professional_vector']}\n"
+)
+else:
+execution_task = (
+f"Synthesize the provided references with these live trending thematic constraints:\n"
+f"- Active Trend Problem to resolve: {nudge['trend_hook']}\n"
+f"- Narrative Focus: Base deep thematic roots on {nudge['creative_theme']}\n"
+f"- Technical Stack Architecture: Ground all logistical components inside {nudge['technical_vector']}\n"
+f"- Compliance Framework: Align operational parameters with {nudge['professional_vector']}\n"
+)
+user_prompt = (
+f"### INPUT MATERIAL / CONTEXT STATEMENTS:\n{raw_context}\n\n"
+f"### MANDATORY INSTRUCTIONS:\n{execution_task}\n"
+f"### EXECUTION GUIDELINE:\n"
+f"Compile a comprehensive, long-form standalone Markdown chapter or complete technical whitepaper addressing these rules."
+)
+# Execute inference payload via requests
+payload = {
+"model": MODEL_NAME,
+"messages": [
+{"role": "system", "content": system_prompt},
+{"role": "user", "content": user_prompt}
+],
+"temperature": 0.3,
+"max_tokens": 3000
+}
+try:
+response = requests.post(API_URL, json=payload, timeout=240)
+response.raise_for_status()
+draft = response.json()["choices"]["message"]["content"]
+except Exception as e:
+print(f"[-] Execution aborted: Inference communication node failed: {e}", file=sys.stderr)
+return
+if draft:
+# Run structural checking algorithms over output string
+if not run_structural_regression_test(draft):
+print("[!] Generation cycle dropped: Failed Markdown safety linter tests.")
+return
+slug = nudge['creative_theme'].replace(" ", "").lower()[:12]
+timestamp = int(time.time())
+target_filename = f"gen_chunk{slug}_{timestamp}.md"
+# Persistent storage write
+(OUTPUT_DIR / target_filename).write_text(draft)
+# Persist metrics data inside SQLite tracking file
+record_generation_run(nudge['trend_hook'], nudge['creative_theme'], target_filename)
+# Execute automated Git version commits
+subprocess.run(["git", "add", str((OUTPUT_DIR / target_filename).relative_to(WORKSPACE_DIR))], cwd=WORKSPACE_DIR, check=True)
+commit_msg = f"feat(manuscript): atomic commit update\n\n[OSINT Anchor]: {nudge['trend_hook']}\n[Motif]: {nudge['creative_theme']}"
+subprocess.run(["git", "commit", "-m", commit_msg], cwd=WORKSPACE_DIR, check=True)
+print(f"[+] Output captured and secured inside workspace repository: {target_filename}")
+else:
+print("[-] Target loop frame dropped due to model processing timeout.")
+
+==========================================
+
+
+6. EXECUTIVE SYSTEM CONTROLLER
+
+
+==========================================
+
+def main():
+if len(sys.argv) > 1 and sys.argv[1] == "--cron":
+# Cron Execution Mode: Single run pass and close out clean
+run_single_pipeline_cycle()
+sys.exit(0)
+# Long Running Daemon Processing Loop Mode
+HOURLY_INTERVAL = 3600
+print(f"[] Initializing long-running daemon execution mode (Interval: {HOURLY_INTERVAL}s)...")
+print("[] To switch to a strict single-run crontab handler, execute using flag: --cron")
+try:
+while True:
+run_single_pipeline_cycle()
+print(f"[*] Daemon sleeping. Standing by for next generation block sequence...")
+time.sleep(HOURLY_INTERVAL)
+except KeyboardInterrupt:
+print("\n[-] Pipeline controller thread terminated via manual user intervention.")
+if name == "main":
+main()
+
+### 📋 Telemetry & Validation Breakdown
+
+1. **SQLite Unique Matrix:** The database saves a hash map of targeted trends inside `pipeline_telemetry.db`. If a specific trend name is caught by your OSINT modules on a second run, the loop automatically drops it and queries alternative trends.
+2. **Zero-Input Autonomy:** If you clear out the contents of the `manuscript_workspace/research/` folder, the pipeline continues running. The script detects the empty directory and instructs the model to act as an independent topic ideator, inventing cohesive narrative problem spaces based on trending terms.
+3. **Markdown Regression Test:** The linter evaluates lines before committing. If the local language model leaves a code block open (` ``` `) or skips header definitions, the script halts execution and drops the file, protecting your Git tree from corrupt data commits.
+
+<FollowUp>
+We can expand this setup further. If you'd like, let me know:
+* Would you like the linter to **auto-correct simple structural errors** (like appending missing code fences to the end of a file)?
+* Should we add an **export hook** to automatically merge the files into a single master document every 24 hours?
+</FollowUp>
+Try without personalization
+
+
+    # Define your exact writing style signature natively inside the orchestrator
+    VOICE_DNA = (
+        "STYLE SIGNATURE (Enforce Absolutely):\n"
+        "- Tone: Forensic precision mixed with raw, atmospheric gravity. No academic stiffness, no artificial cheer.\n"
+        "- Sentence Structure: Short, punchy, active fragments. Vary sentence lengths deliberately. Avoid comma splices.\n"
+        "- Banned AI Phrasing: Completely eliminate placeholder transitions like 'Furthermore', 'Moreover', 'Delve', "
+        "'In conclusion', or conversational friendly framing. Get straight to the bone of the concept.\n"
+        "- Vocabulary Fusion: Blend technical systems terminology (e.g., pipeline, telemetry, artifacts, governance, matrix) "
+        "seamlessly with visceral, poetic, or archaic markers (e.g., provenance, fables, macabre, hidden, ancient scripts).\n"
+        "- Philosophy: Focus heavily on deterministic outcomes, survival, and rigorous, unverified vs. verified data tracking."
+    )
+
+    system_prompt = (
+        f"You are an automated manuscript development agent running an advanced text generation loop.\n"
+        f"You write exclusively in the user's authentic style.\n\n"
+        f"{VOICE_DNA}\n\n"
+        "Integrate structural context files and trending themes cleanly. Output only raw markdown prose."
+    )
+
+
+
+
+          
