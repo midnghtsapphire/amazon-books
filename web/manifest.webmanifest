@@ -1,0 +1,14 @@
+{
+  "name": "KDP Packaging Studio",
+  "short_name": "KDP Studio",
+  "description": "Compose print-ready Amazon KDP wraparound covers, ebook fronts and a pre-answered upload manifest — entirely in your browser.",
+  "theme_color": "#0b0e1f",
+  "background_color": "#f8f7e5",
+  "display": "standalone",
+  "start_url": "./",
+  "icons": [
+    { "src": "pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "pwa-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

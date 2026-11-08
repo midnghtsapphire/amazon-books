@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "generated": "2026-11-09 00:09:17",
+    "note": "Walk the KDP wizard top to bottom; every answer is here."
+  },
+  "1_details_page": {
+    "language": "English",
+    "book_title": "The Tartarian Ledger",
+    "subtitle": "Macabre Fables of Lost Empires",
+    "series": "(leave blank \u2014 not part of a series)",
+    "edition_number": "1",
+    "author": "Midnight Sapphire",
+    "contributors": "(none)",
+    "description": "Twelve macabre fables recovered from a collapsed archive, mapping ancient Minoan ledger entries onto modern systemic failures. Written in a voice of forensic precision and raw, atmospheric gravity.",
+    "publishing_rights": "I own the copyright and I hold necessary publishing rights",
+    "primary_audience_adult_content": "No",
+    "primary_audience_reading_age": "18+",
+    "primary_marketplace": "Amazon.com",
+    "categories": [
+      "Fiction > Short Stories & Anthologies > Short Stories",
+      "Fiction > Fairy Tales, Folk Tales, Legends & Mythology",
+      "(pick a 3rd placement category after publish via KDP support)"
+    ],
+    "keywords_7_slots": [
+      "macabre fables short stories",
+      "linear b minoan mysteries",
+      "dark mythology anthology",
+      "ancient scripts fiction",
+      "tartarian empire mystery",
+      "literary dark fantasy fables",
+      "lost civilizations anthology"
+    ],
+    "preorder": "I am ready to release my book now"
+  },
+  "2_content_page": {
+    "isbn": "Assign me a free KDP ISBN",
+    "imprint": "(leave blank)",
+    "publication_date": "(leave blank \u2014 defaults to publish date)",
+    "interior_and_paper_type": "Premium color ink & white paper",
+    "trim_size": "8.5 x 11 in (21.59 x 27.94 cm)",
+    "bleed_settings": "No bleed",
+    "cover_finish": "Glossy",
+    "manuscript_file": "interior_manuscript.pdf",
+    "cover_upload": "/mnt/agents/output/demo_kdp_package/cover_wrap_print.pdf",
+    "cover_dimensions_check": {
+      "required_full_wrap_inches": "17.7004 x 11.25",
+      "spine_width_inches": 0.4504,
+      "page_count_basis": 200,
+      "resolution": "300 DPI"
+    },
+    "ai_generated_content_disclosure": {
+      "question": "Did you use AI tools in creating texts, images, and/or translations in your book?",
+      "answer": "Yes",
+      "text_dropdown": "Entire work, with extensive editing",
+      "images_dropdown": "Some AI-generated images, with minimal or no editing",
+      "translations_dropdown": "None",
+      "why": "Pipeline drafts text and cover art with AI; KDP requires disclosure even after heavy editing. It is not shown to buyers and does not affect royalties."
+    },
+    "book_preview": "Launch Previewer, approve, then Save and Continue"
+  },
+  "3_pricing_page": {
+    "territories": "All territories (worldwide rights)",
+    "primary_marketplace": "Amazon.com",
+    "royalty_plan": "60% (paperback standard)",
+    "estimated_printing_cost_usd": 14.0,
+    "minimum_list_price_usd": 23.34,
+    "suggested_list_price_usd": 31.34,
+    "other_marketplaces": "Auto-fill from Amazon.com price",
+    "terms": "Agree & publish"
+  },
+  "optional_hardcover_variant": {
+    "note": "Hardcover max trim is 8.25 x 11 in \u2014 NOT 8.5 x 11.",
+    "trim_size": "8.25 x 11 in",
+    "cover_finish": "Case laminate (always glossy-style)",
+    "interior_and_paper_type": "Premium color ink & white paper"
+  },
+  "ebook_variant": {
+    "cover_file": "/mnt/agents/output/demo_kdp_package/cover_ebook_front.jpg",
+    "royalty": "70% plan (price 2.99-9.99) or 35%",
+    "kdp_select": "Your choice \u2014 90-day Amazon exclusivity if enrolled",
+    "ai_disclosure": "Same answers as paperback section"
+  }
+}

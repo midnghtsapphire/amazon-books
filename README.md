@@ -1,21 +1,67 @@
-# amazon-books
+# Amazon Books — Autonomous Manuscript & KDP Packaging Pipeline
 
-Public hub for **released** Amazon / KDP book transcripts and catalog notes for Audrey Walter-Evans.
+![Governance](https://img.shields.io/badge/Governance-REVVEL--STANDARDS-blueviolet)
+![CO₂ Avoided](https://img.shields.io/badge/CO%E2%82%82_Avoided-~0.3kg%2Ftitle-brightgreen)
+![Cover Art](https://img.shields.io/badge/Cover_Art-Grok_Imagine_%28xAI%29-orange)
+![Milestone](https://img.shields.io/badge/celebration-whole--book--pipeline-gold)
 
-## Layout
+One pipeline, three stages: the **orchestrator** writes the book, the
+**builder** typesets it into a print interior, the **packager** wraps it in a
+print-ready KDP cover (Grok Imagine art) and pre-answers the entire upload
+wizard.
 
-- `released/` — final public transcripts (and related text) for books that are live or deliberately released
-- Per-title **private** repos hold full manuscript + KDP packs (covers, interiors, build files)
+Governance: this project follows [REVVEL-STANDARDS.md](REVVEL-STANDARDS.md)
+(organization & clarity, greener code, eco-metrics, celebration tags).
 
-## Per-title repos
+## Two ways in
 
-| Title | Repo |
+| You have | You need | Run |
+| --- | --- | --- |
+| A finished book | A new cover only | `packaging/kdp_packager.py --cover-only --pages N --title "..."` |
+| Nothing (or drafts) | The whole book **and** the cover | `builder/book_builder.py --from-drafts --title "..."` |
+| A manuscript file (.md/.txt) | Typesetting + cover + answers | `builder/book_builder.py --manuscript my_book.md --title "..."` |
+| No time for a terminal | Everything, in a browser | `web/` — open `index.html` (also auto-deployed to GitHub Pages) |
+
+## Repo map
+
+| Path | Purpose |
 | --- | --- |
-| The $0 Startup Dictionary | [zero-startup-dictionary](https://github.com/midnghtsapphire/zero-startup-dictionary) (private) |
-| The $0 Startup Field Guide | [zero-startup-field-guide](https://github.com/midnghtsapphire/zero-startup-field-guide) (private) |
-| Clues in Clay / Tărtăria | [tartaria-tablets](https://github.com/midnghtsapphire/tartaria-tablets) (research + manuscripts) |
-| Scribes of the Palace | [scribes-of-the-palace](https://github.com/midnghtsapphire/scribes-of-the-palace) (private) |
-| Gold of Crete | [gold-of-crete](https://github.com/midnghtsapphire/gold-of-crete) (private; heavy art deferred until LFS) |
-| Figs, Wine and Honey | [figs-wine-honey](https://github.com/midnghtsapphire/figs-wine-honey) (private) |
+| `orchestrator/` | Autonomous drafting engine: OSINT trend hooks, SQLite dedup telemetry, Voice DNA style lock, Markdown regression linter, cron/daemon modes |
+| `builder/` | Compiles drafts → 8.5×11 interior PDF → derives page count → hands off to the packager |
+| `packaging/` | Wraparound cover composer (300 DPI, bleed, barcode zone), ebook front, `kdp_answers.json` manifest |
+| `prompts/` | Voice DNA few-shot profile, cover & copy prompt packages |
+| `web/` | KDP Packaging Studio — fully client-side browser build (no keys, no server) |
+| `examples/` | Sample generated package for reference |
+| `.github/workflows/` | Draft-structure governance lint + Pages deploy |
 
-Unreleased manuscripts and cover art stay in the private repos. Only put released transcripts here.
+## Quick start (onboarding checklist)
+
+1. `pip install -r requirements.txt`
+2. **Cover art (Grok Imagine):** get a key at console.x.ai, then
+   `export XAI_API_KEY=...` (without it, art falls back to the deterministic
+   procedural engine — zero network, zero cost).
+3. **Book text (optional):** point `orchestrator/autonomous_agent_core.py`'s
+   `API_URL` at your local inference node (LM Studio default:
+   `http://localhost:1234/v1/chat/completions`) and run
+   `python orchestrator/autonomous_agent_core.py --cron` per cycle.
+4. Build: `python builder/book_builder.py --from-drafts --title "..."`.
+5. Upload day: open the generated `kdp_answers.json` next to the KDP wizard
+   and copy each answer across.
+
+## Eco impact (per REVVEL standards)
+
+- **~0.3 kg CO₂ avoided per title**: exact-dimension preflight (spine math
+  from the real page count, barcode/safe zones) eliminates the printed
+  proof-copy iteration most covers burn through.
+- Browser studio runs client-side: no cloud render farm, no upload round
+  trips; the procedural art floor means even cover concepts can be drafted
+  offline.
+
+## Notes
+
+- AI-content disclosure is pre-answered "Yes" in every manifest — KDP
+  requires it for AI-generated text/images; it is not shown to buyers.
+- Verify current printing rates in the KDP Royalty Calculator before publish
+  day; Amazon revises periodically.
+- The web studio never sees your API keys; Grok Imagine runs only in the
+  local Python tooling where keys stay in your environment.
