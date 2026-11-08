@@ -154,11 +154,30 @@ def render_interior_pdf(md_text: str, title: str, author: str,
 def build_book(title: str, subtitle: str, author: str,
                source: str = "drafts", manuscript_path: str = "",
                theme: str = "macabre fables, ancient scripts",
-               blurb: str = "", art_backend: str = "xai") -> dict:
+               blurb: str = "", art_backend: str = "xai",
+               target_pages: str = "") -> dict:
     """Whole-book mode: manuscript -> interior PDF -> page count -> full
-    KDP package with Grok Imagine cover art."""
+    KDP package with Grok Imagine cover art.
+
+    target_pages: "" (off), an integer string, or "auto" — "auto" asks
+    market_scout for the ratings-weighted length buyers prefer in this
+    category and reports the gap if the manuscript is short of it."""
     print(f"[*] Compiling manuscript from: {source}")
     md = compile_manuscript(source, manuscript_path)
+
+    target = None
+    if target_pages:
+        if target_pages == "auto":
+            try:
+                from market_scout import recommend_length
+                rec = recommend_length(theme)
+                target = rec["target_pages"]
+                print(f"[*] Market scout: buyers in '{theme}' land on ~{target} pages "
+                      f"[{rec['band']['evidence']}]; ink: {rec['ink']['recommended_ink']}")
+            except Exception as e:
+                print(f"[!] Market scout failed ({e}) — building without a target.")
+        else:
+            target = int(target_pages)
 
     slug = "".join(c if c.isalnum() else "_" for c in title.lower())[:40]
     master_md = BUILD_DIR / f"{slug}_manuscript.md"
@@ -172,6 +191,16 @@ def build_book(title: str, subtitle: str, author: str,
         raise RuntimeError(
             f"Interior is {page_count} pages; KDP paperbacks need >= {MIN_PAGES}. "
             "Run more pipeline cycles first.")
+
+    if target and page_count < target:
+        gap_pages = target - page_count
+        gap_words = gap_pages * 350
+        cycles = max(1, round(gap_words / 3000))
+        print(f"[!] LENGTH GAP: {page_count}/{target} pages to market target. "
+              f"~{gap_words:,} more words needed — roughly {cycles} more "
+              f"orchestrator cycles at ~3k words each.")
+    elif target:
+        print(f"[+] Length target met: {page_count} >= {target} pages.")
 
     blurb = blurb or (
         f"{title}: a {theme} collection forged by an autonomous manuscript pipeline."
@@ -202,13 +231,16 @@ def main():
     p.add_argument("--blurb", default="")
     p.add_argument("--art-backend", default="xai",
                    choices=["xai", "openrouter", "procedural"])
+    p.add_argument("--target-pages", default="",
+                   help='Page goal: an integer, or "auto" to take the '
+                        'market-preferred length from market_scout')
     args = p.parse_args()
 
     build_book(
         title=args.title, subtitle=args.subtitle, author=args.author,
         source="drafts" if args.from_drafts else "manuscript",
         manuscript_path=args.manuscript, theme=args.theme, blurb=args.blurb,
-        art_backend=args.art_backend,
+        art_backend=args.art_backend, target_pages=args.target_pages,
     )
 
 

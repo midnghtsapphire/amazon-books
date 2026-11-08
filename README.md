@@ -27,7 +27,7 @@ Governance: this project follows [REVVEL-STANDARDS.md](REVVEL-STANDARDS.md)
 | Path | Purpose |
 | --- | --- |
 | `orchestrator/` | Autonomous drafting engine: OSINT trend hooks, SQLite dedup telemetry, Voice DNA style lock, Markdown regression linter, cron/daemon modes |
-| `builder/` | Compiles drafts → 8.5×11 interior PDF → derives page count → hands off to the packager |
+| `builder/` | Compiles drafts → 8.5×11 interior PDF → derives page count → hands off to the packager. Includes `market_scout.py`: free-channel SEO intelligence that picks the length buyers actually prefer per category |
 | `packaging/` | Wraparound cover composer (300 DPI, bleed, barcode zone), ebook front, `kdp_answers.json` manifest |
 | `prompts/` | Voice DNA few-shot profile, cover & copy prompt packages |
 | `web/` | KDP Packaging Studio — fully client-side browser build (no keys, no server) |
@@ -44,9 +44,9 @@ Governance: this project follows [REVVEL-STANDARDS.md](REVVEL-STANDARDS.md)
    `API_URL` at your local inference node (LM Studio default:
    `http://localhost:1234/v1/chat/completions`) and run
    `python orchestrator/autonomous_agent_core.py --cron` per cycle.
-4. Build: `python builder/book_builder.py --from-drafts --title "..."`.
-5. Upload day: open the generated `kdp_answers.json` next to the KDP wizard
-   and copy each answer across.
+4. Scout the market (optional, free): `python builder/market_scout.py "short stories anthology"` → target pages, buyer search terms, ink recommendation.
+5. Build to that target: `python builder/book_builder.py --from-drafts --title "..." --target-pages auto` — or let the orchestrator draft until the target is met: `python orchestrator/autonomous_agent_core.py --until-pages 220`.
+6. Upload day: open the generated `kdp_answers.json` next to the KDP wizard and copy each answer across.
 
 ## Eco impact (per REVVEL standards)
 

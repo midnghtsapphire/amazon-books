@@ -17,7 +17,7 @@ jobs:
     - name: Initialize Python Core Sandbox Environment
       uses: actions/setup-python@v5
       with:
-        python-python-version: '3.11'
+        python-version: '3.11'
 
     - name: Run Structural Regression Check Assay
       run: |

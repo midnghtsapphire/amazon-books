@@ -368,12 +368,28 @@ def package_book_from_drafts(title: str, subtitle: str, author: str,
 # 7. EXECUTIVE SYSTEM CONTROLLER
 # ==========================================
 
+def drafts_estimated_pages() -> int:
+    """Cheap length gauge without typesetting: total draft words / ~350
+    words per typeset 8.5x11 page. Exact count happens in book_builder."""
+    total_words = 0
+    for d in OUTPUT_DIR.glob("*.md"):
+        try:
+            total_words += len(d.read_text().split())
+        except Exception:
+            pass
+    return total_words // 350
+
+
 def main():
     parser = argparse.ArgumentParser(description="Autonomous manuscript pipeline controller")
     parser.add_argument("--cron", action="store_true",
                         help="Single run pass and close out clean (crontab handler mode)")
     parser.add_argument("--package-book", action="store_true",
                         help="After the cycle, compile drafts and build the full KDP package")
+    parser.add_argument("--until-pages", type=int, default=0,
+                        help="Keep cycling until drafts reach this many pages, then "
+                             "auto-package and stop. Pair with market_scout's target. "
+                             "Implies --package-book. (0 = off)")
     parser.add_argument("--title", default="The Tartarian Ledger")
     parser.add_argument("--subtitle", default="Macabre Fables of Lost Empires")
     parser.add_argument("--author", default="Midnight Sapphire")
@@ -381,6 +397,25 @@ def main():
                         choices=["xai", "openrouter", "procedural"],
                         help="Cover art backend for the packaging hand-off (default: xai / Grok Imagine)")
     args = parser.parse_args()
+
+    # Market-length mode: cycle until the book is long enough, then package once.
+    if args.until_pages > 0:
+        MAX_CYCLES = 60  # runaway protection: 60 cycles ~= 500+ typeset pages
+        for cycle in range(1, MAX_CYCLES + 1):
+            est = drafts_estimated_pages()
+            print(f"[*] Length tracker: ~{est}/{args.until_pages} pages drafted.")
+            if est >= args.until_pages:
+                print("[+] Length target reached. Handing off to book builder.")
+                package_book_from_drafts(args.title, args.subtitle, args.author,
+                                         args.art_backend)
+                sys.exit(0)
+            result = run_single_pipeline_cycle()
+            if not result:
+                print("[!] Cycle produced nothing (model offline?); retrying next pass.")
+                time.sleep(30)
+        print(f"[-] Safety cap hit ({MAX_CYCLES} cycles) without reaching "
+              f"{args.until_pages} pages. Review drafts before packaging.")
+        sys.exit(1)
 
     if args.cron:
         # Cron Execution Mode: Single run pass and close out clean
