@@ -1,0 +1,30 @@
+version: 2.1
+
+jobs:
+  run_free_linter:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Execute Autonomous Architecture Regression Assay
+          command: |
+            python -c '
+            from pathlib import Path
+            import sys
+            drafts = Path("./manuscript_workspace/drafts")
+            if not drafts.exists(): sys.exit(0)
+            errors = 0
+            for f in drafts.glob("*.md"):
+                txt = f.read_text()
+                if len(txt.strip()) < 200 or txt.count("```") % 2 != 0:
+                    print(f"[-] Structural anomaly found inside: {f.name}")
+                    errors += 1
+            if errors > 0: sys.exit(1)
+            print("[+] Complete open source baseline checks green.")
+            '
+
+workflows:
+  local_governance_pipeline:
+    jobs:
+      - run_free_linter
