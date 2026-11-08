@@ -1,0 +1,65 @@
+name: Continuous Draft Validation Governance
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-markdown-structures:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Local Repository Artifacts
+      uses: actions/checkout@v4
+
+    - name: Initialize Python Core Sandbox Environment
+      uses: actions/setup-python@v5
+      with:
+        python-python-version: '3.11'
+
+    - name: Run Structural Regression Check Assay
+      run: |
+        python -c '
+        import sys
+        from pathlib import Path
+
+        drafts_path = Path("./manuscript_workspace/drafts")
+        if not drafts_path.exists():
+            print("[*] No target draft directories detected yet. Skipping lint checks.")
+            sys.exit(0)
+
+        failed_files = 0
+        for file_path in drafts_path.glob("*.md"):
+            try:
+                content = file_path.read_text()
+                
+                # Check 1: Length Density Boundary Validation
+                if len(content.strip()) < 200:
+                    print(f"[-] Structural Error: {file_path.name} falls below minimum size thresholds.")
+                    failed_files += 1
+                    continue
+                    
+                # Check 2: Balanced Code Fence Blocks Validation
+                if content.count("```") % 2 != 0:
+                    print(f"[-] Syntax Error: {file_path.name} contains unclosed markdown code fences.")
+                    failed_files += 1
+                    continue
+                    
+                # Check 3: Header Telemetry Anchors Verification
+                if not any(line.strip().startswith("#") for line in content.splitlines()):
+                    print(f"[-] Format Error: {file_path.name} missing markdown structural header anchors.")
+                    failed_files += 1
+                    continue
+                    
+            except Exception as e:
+                print(f"[-] Ingestion Error reading {file_path.name}: {e}")
+                failed_files += 1
+
+        if failed_files > 0:
+            print(f"\n[!] Governance Validation Failed: {failed_files} file(s) corrupted.")
+            sys.exit(1)
+
+        print("[+] All workspace repository files passed structural linter governance checks.")
+        '
