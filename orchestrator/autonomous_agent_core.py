@@ -38,15 +38,17 @@ import requests
 # ==========================================
 # 1. CORE PIPELINE SPECIFICATIONS
 # ==========================================
-# Primary inference node: local LM Studio (OpenAI-compatible).
+# Offline fallback: local LM Studio (OpenAI-compatible). Tried after every
+# OpenRouter model fails (or when no OPENROUTER_API_KEY is set), and forced
+# with --provider local.
 LOCAL_API_URL = "http://localhost:1234/v1/chat/completions"
 # LM Studio's API identifier for the loaded model (the ":3" is LM Studio's
 # variant suffix — check Server > Model in the LM Studio app if you swap quants).
 LOCAL_MODEL = "google/gemma-3-4b:3"
 
-# Fallback provider: OpenRouter (same OpenAI chat-completions shape).
-# Set OPENROUTER_API_KEY in the environment. Used automatically when the local
-# node is unreachable, or forced with --provider openrouter.
+# Primary provider: OpenRouter (same OpenAI chat-completions shape).
+# Set OPENROUTER_API_KEY in the environment. Tried first in --provider auto
+# mode; force with --provider openrouter.
 #
 # OPENROUTER_MODELS is an ordered fallback chain: each model is tried in turn
 # until one answers (free endpoints rate-limit and get delisted often, so a
@@ -280,22 +282,23 @@ def ingest_research_context() -> tuple:
 
 
 def call_llm(payload: dict, provider: str = "auto") -> str | None:
-    """Sends the chat-completions payload to the local node first, then falls
-    back to OpenRouter when the local node is unreachable (or provider is
-    forced). Returns the draft text, or None when every provider fails."""
+    """Sends the chat-completions payload down the OpenRouter model chain
+    first, then falls back to the local LM Studio node when every OpenRouter
+    model fails (or provider is forced). Returns the draft text, or None when
+    every provider fails."""
     attempts = []
-    if provider in ("auto", "local"):
-        attempts.append(("local LM Studio", LOCAL_API_URL, LOCAL_MODEL, None))
     if provider in ("auto", "openrouter"):
         for model in OPENROUTER_MODELS:
             attempts.append(("OpenRouter", OPENROUTER_API_URL, model,
                              os.environ.get("OPENROUTER_API_KEY")))
+    if provider in ("auto", "local"):
+        attempts.append(("local LM Studio", LOCAL_API_URL, LOCAL_MODEL, None))
 
     openrouter_warned = False
     for name, url, model, api_key in attempts:
         if name == "OpenRouter" and not api_key:
             if not openrouter_warned:
-                print("[!] OPENROUTER_API_KEY not set — skipping OpenRouter fallback.")
+                print("[!] OPENROUTER_API_KEY not set — skipping OpenRouter, using local node.")
                 openrouter_warned = True
             continue
         headers = {"Content-Type": "application/json"}
