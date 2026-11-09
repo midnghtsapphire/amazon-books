@@ -45,13 +45,28 @@ LOCAL_API_URL = "http://localhost:1234/v1/chat/completions"
 LOCAL_MODEL = "google/gemma-3-4b:3"
 
 # Fallback provider: OpenRouter (same OpenAI chat-completions shape).
-# Set OPENROUTER_API_KEY in the environment; override the model with
-# OPENROUTER_MODEL. Used automatically when the local node is unreachable,
-# or forced with --provider openrouter. The default below is the closest
-# OpenRouter equivalent of the local model (paid, ~$0.04/M in); point
-# OPENROUTER_MODEL at any current ":free" ID to stay at zero cost.
+# Set OPENROUTER_API_KEY in the environment. Used automatically when the local
+# node is unreachable, or forced with --provider openrouter.
+#
+# OPENROUTER_MODELS is an ordered fallback chain: each model is tried in turn
+# until one answers (free endpoints rate-limit and get delisted often, so a
+# single model is brittle). Override with OPENROUTER_MODELS="id1,id2,..."
+# (comma-separated) or OPENROUTER_MODEL="single-id".
+#
+# Default chain, tuned for long-form fiction at zero/low cost (Nov 2026):
+#   1. Nemotron 3 Ultra 550B (free, 1M ctx — best-tested free fiction model)
+#   2. Gemma 4 31B (free, 262K ctx — strong prose scores)
+#   3. Gemma 3 4B IT (paid last resort, ~$0.04/M in — guarantees an answer)
+# Quality upgrade: prepend "z-ai/glm-5.3-flash" (~$0.15/M in) or
+# "anthropic/claude-haiku-5.5" to OPENROUTER_MODELS for measurably better prose
+# at cents-per-chapter cost.
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-3-4b-it")
+_OPENROUTER_MODELS_RAW = (
+    os.environ.get("OPENROUTER_MODELS")
+    or os.environ.get("OPENROUTER_MODEL")
+    or "nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-31b-it:free,google/gemma-3-4b-it"
+)
+OPENROUTER_MODELS = [m.strip() for m in _OPENROUTER_MODELS_RAW.split(",") if m.strip()]
 WORKSPACE_DIR = Path("./manuscript_workspace")
 RESEARCH_DIR = WORKSPACE_DIR / "research"
 OUTPUT_DIR = WORKSPACE_DIR / "drafts"
@@ -272,12 +287,16 @@ def call_llm(payload: dict, provider: str = "auto") -> str | None:
     if provider in ("auto", "local"):
         attempts.append(("local LM Studio", LOCAL_API_URL, LOCAL_MODEL, None))
     if provider in ("auto", "openrouter"):
-        attempts.append(("OpenRouter", OPENROUTER_API_URL, OPENROUTER_MODEL,
-                         os.environ.get("OPENROUTER_API_KEY")))
+        for model in OPENROUTER_MODELS:
+            attempts.append(("OpenRouter", OPENROUTER_API_URL, model,
+                             os.environ.get("OPENROUTER_API_KEY")))
 
+    openrouter_warned = False
     for name, url, model, api_key in attempts:
         if name == "OpenRouter" and not api_key:
-            print("[!] OPENROUTER_API_KEY not set — skipping OpenRouter fallback.")
+            if not openrouter_warned:
+                print("[!] OPENROUTER_API_KEY not set — skipping OpenRouter fallback.")
+                openrouter_warned = True
             continue
         headers = {"Content-Type": "application/json"}
         if api_key:
