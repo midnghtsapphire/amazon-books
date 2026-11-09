@@ -24,6 +24,7 @@ Packaging hand-off also needs: pip install pillow fpdf2
 
 import argparse
 import json
+import os
 import random
 import sqlite3
 import subprocess
@@ -37,8 +38,16 @@ import requests
 # ==========================================
 # 1. CORE PIPELINE SPECIFICATIONS
 # ==========================================
-API_URL = "http://localhost:1234/v1/chat/completions"   # local inference node (LM Studio etc.)
-MODEL_NAME = "gemma-3-4b-it"
+# Primary inference node: local LM Studio (OpenAI-compatible).
+LOCAL_API_URL = "http://localhost:1234/v1/chat/completions"
+LOCAL_MODEL = "gemma-3-4b-it"
+
+# Fallback provider: OpenRouter (same OpenAI chat-completions shape).
+# Set OPENROUTER_API_KEY in the environment; override the model with
+# OPENROUTER_MODEL. Used automatically when the local node is unreachable,
+# or forced with --provider openrouter.
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-3-4b-it")
 WORKSPACE_DIR = Path("./manuscript_workspace")
 RESEARCH_DIR = WORKSPACE_DIR / "research"
 OUTPUT_DIR = WORKSPACE_DIR / "drafts"
@@ -251,7 +260,38 @@ def ingest_research_context() -> tuple:
             "Initiate zero-input autonomous topic generation.", True)
 
 
-def run_single_pipeline_cycle() -> dict | None:
+def call_llm(payload: dict, provider: str = "auto") -> str | None:
+    """Sends the chat-completions payload to the local node first, then falls
+    back to OpenRouter when the local node is unreachable (or provider is
+    forced). Returns the draft text, or None when every provider fails."""
+    attempts = []
+    if provider in ("auto", "local"):
+        attempts.append(("local LM Studio", LOCAL_API_URL, LOCAL_MODEL, None))
+    if provider in ("auto", "openrouter"):
+        attempts.append(("OpenRouter", OPENROUTER_API_URL, OPENROUTER_MODEL,
+                         os.environ.get("OPENROUTER_API_KEY")))
+
+    for name, url, model, api_key in attempts:
+        if name == "OpenRouter" and not api_key:
+            print("[!] OPENROUTER_API_KEY not set — skipping OpenRouter fallback.")
+            continue
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        body = {**payload, "model": model}
+        try:
+            response = requests.post(url, json=body, headers=headers, timeout=240)
+            response.raise_for_status()
+            print(f"[*] Inference served by: {name} ({model})")
+            return response.json()["choices"][0]["message"]["content"]
+        except requests.exceptions.ConnectionError:
+            print(f"[!] {name} unreachable — trying next provider...")
+        except Exception as e:
+            print(f"[!] {name} failed: {e}")
+    return None
+
+
+def run_single_pipeline_cycle(provider: str = "auto") -> dict | None:
     """Triggers a single compilation, verification, tracking, and version commit pass.
     Returns the nudge matrix + draft text on success (for the packaging hand-off)."""
     print(f"\n[*] Launching pipeline loop execution sequence: {time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -299,9 +339,8 @@ def run_single_pipeline_cycle() -> dict | None:
         f"Compile a comprehensive, long-form standalone Markdown chapter or complete technical whitepaper addressing these rules."
     )
 
-    # Execute inference payload via requests
+    # Execute inference payload via requests (local node -> OpenRouter fallback)
     payload = {
-        "model": MODEL_NAME,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -310,12 +349,9 @@ def run_single_pipeline_cycle() -> dict | None:
         "max_tokens": 3000
     }
 
-    try:
-        response = requests.post(API_URL, json=payload, timeout=240)
-        response.raise_for_status()
-        draft = response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        print(f"[-] Execution aborted: Inference communication node failed: {e}", file=sys.stderr)
+    draft = call_llm(payload, provider=provider)
+    if draft is None:
+        print("[-] Execution aborted: every inference provider failed.", file=sys.stderr)
         return None
 
     if not draft:
@@ -396,6 +432,10 @@ def main():
     parser.add_argument("--art-backend", default="xai",
                         choices=["xai", "openrouter", "procedural"],
                         help="Cover art backend for the packaging hand-off (default: xai / Grok Imagine)")
+    parser.add_argument("--provider", default="auto",
+                        choices=["auto", "local", "openrouter"],
+                        help="Text inference: local LM Studio, OpenRouter, or auto "
+                             "(local first, OpenRouter fallback). Default: auto")
     args = parser.parse_args()
 
     # Market-length mode: cycle until the book is long enough, then package once.
@@ -409,7 +449,7 @@ def main():
                 package_book_from_drafts(args.title, args.subtitle, args.author,
                                          args.art_backend)
                 sys.exit(0)
-            result = run_single_pipeline_cycle()
+            result = run_single_pipeline_cycle(provider=args.provider)
             if not result:
                 print("[!] Cycle produced nothing (model offline?); retrying next pass.")
                 time.sleep(30)
@@ -419,7 +459,7 @@ def main():
 
     if args.cron:
         # Cron Execution Mode: Single run pass and close out clean
-        result = run_single_pipeline_cycle()
+        result = run_single_pipeline_cycle(provider=args.provider)
         if args.package_book and result:
             package_book_from_drafts(args.title, args.subtitle, args.author, args.art_backend)
         sys.exit(0)
@@ -430,7 +470,7 @@ def main():
     print("[*] To switch to a strict single-run crontab handler, execute using flag: --cron")
     try:
         while True:
-            result = run_single_pipeline_cycle()
+            result = run_single_pipeline_cycle(provider=args.provider)
             if args.package_book and result:
                 package_book_from_drafts(args.title, args.subtitle, args.author, args.art_backend)
             print("[*] Daemon sleeping. Standing by for next generation block sequence...")
