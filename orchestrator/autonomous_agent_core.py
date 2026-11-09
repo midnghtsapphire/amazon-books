@@ -40,12 +40,16 @@ import requests
 # ==========================================
 # Primary inference node: local LM Studio (OpenAI-compatible).
 LOCAL_API_URL = "http://localhost:1234/v1/chat/completions"
-LOCAL_MODEL = "gemma-3-4b-it"
+# LM Studio's API identifier for the loaded model (the ":3" is LM Studio's
+# variant suffix — check Server > Model in the LM Studio app if you swap quants).
+LOCAL_MODEL = "google/gemma-3-4b:3"
 
 # Fallback provider: OpenRouter (same OpenAI chat-completions shape).
 # Set OPENROUTER_API_KEY in the environment; override the model with
 # OPENROUTER_MODEL. Used automatically when the local node is unreachable,
-# or forced with --provider openrouter.
+# or forced with --provider openrouter. The default below is the closest
+# OpenRouter equivalent of the local model (paid, ~$0.04/M in); point
+# OPENROUTER_MODEL at any current ":free" ID to stay at zero cost.
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-3-4b-it")
 WORKSPACE_DIR = Path("./manuscript_workspace")
