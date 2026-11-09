@@ -1,0 +1,91 @@
+name: Autonomous Drafting Pipeline
+
+# Runs the orchestrator in the cloud on a schedule (free: public repo).
+# Drafts + telemetry live in manuscript_workspace/ and are committed back to
+# main after every run, so each execution continues where the last stopped.
+#
+# Required repo configuration (Settings > Secrets and variables > Actions):
+#   Secret   OPENROUTER_API_KEY  - your OpenRouter key (drives the writing)
+#   Variable OPENROUTER_MODELS   - optional comma-separated model chain override
+#   Secret   XAI_API_KEY         - optional; Grok Imagine covers at packaging time
+#                                  (procedural art is the automatic fallback)
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"   # every 6 hours at :23, off the top-of-hour rush
+  workflow_dispatch:
+    inputs:
+      cycles:
+        description: "Draft cycles to run this execution"
+        required: false
+        default: "2"
+      package_book:
+        description: "Package drafts into a full KDP book after the cycles (true/false)"
+        required: false
+        default: "false"
+      title:
+        description: "Book title (packaging only)"
+        required: false
+        default: "The Tartarian Ledger"
+      subtitle:
+        description: "Book subtitle (packaging only)"
+        required: false
+        default: "Macabre Fables of Lost Empires"
+
+permissions:
+  contents: write   # GITHUB_TOKEN pushes the draft commits; no PAT needed
+
+concurrency:
+  group: drafting-pipeline
+  cancel-in-progress: false   # never leave a half-written draft state
+
+env:
+  OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  OPENROUTER_MODELS: ${{ vars.OPENROUTER_MODELS }}
+  XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run drafting cycles
+        shell: bash
+        run: |
+          set -e
+          CYCLES="${{ github.event.inputs.cycles || '2' }}"
+          for i in $(seq 1 "$CYCLES"); do
+            echo "=== Drafting cycle $i of $CYCLES ==="
+            python orchestrator/autonomous_agent_core.py --cron --provider openrouter || true
+          done
+          if [ "${{ github.event.inputs.package_book || 'false' }}" = "true" ]; then
+            echo "=== Packaging book ==="
+            python orchestrator/autonomous_agent_core.py --cron --package-book \
+              --title "${{ github.event.inputs.title }}" \
+              --subtitle "${{ github.event.inputs.subtitle }}" \
+              --provider openrouter
+          fi
+
+      - name: Commit new drafts back to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No new material this run."
+          else
+            git commit -m "chore(pipeline): autonomous drafting cycle
+
+          celebration: cloud drafting cycle committed by Actions"
+            git push
+          fi

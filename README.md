@@ -40,15 +40,24 @@ Governance: this project follows [REVVEL-STANDARDS.md](REVVEL-STANDARDS.md)
 2. **Cover art (Grok Imagine):** get a key at console.x.ai, then
    `export XAI_API_KEY=...` (without it, art falls back to the deterministic
    procedural engine — zero network, zero cost).
-3. **Book text:** the orchestrator targets your local LM Studio node
-   (`http://localhost:1234/v1/chat/completions`, model `gemma-3-4b-it`) and
-   **falls back to OpenRouter automatically** when the local node is down —
-   set `OPENROUTER_API_KEY` (and optionally `OPENROUTER_MODEL`) in your
-   environment, or force a provider with `--provider local|openrouter|auto`.
+3. **Book text:** the orchestrator runs the **OpenRouter model chain first**
+   (Nemotron 3 Ultra 550B `:free` → Gemma 4 31B `:free` → Gemma 3 4B paid
+   last resort) and falls back to your local LM Studio node
+   (`http://localhost:1234/v1/chat/completions`, model `google/gemma-3-4b:3`)
+   when the cloud is unreachable. Set `OPENROUTER_API_KEY` (and optionally
+   `OPENROUTER_MODELS`, a comma-separated chain) in your environment, or force
+   a provider with `--provider local|openrouter|auto`.
    Run `python orchestrator/autonomous_agent_core.py --cron` per cycle.
 4. Scout the market (optional, free): `python builder/market_scout.py "short stories anthology"` → target pages, buyer search terms, ink recommendation.
 5. Build to that target: `python builder/book_builder.py --from-drafts --title "..." --target-pages auto` — or let the orchestrator draft until the target is met: `python orchestrator/autonomous_agent_core.py --until-pages 220`.
 6. Upload day: open the generated `kdp_answers.json` next to the KDP wizard and copy each answer across.
+7. **Cloud drafting (optional, free):** the `Autonomous Drafting Pipeline`
+   workflow writes every 6 hours on GitHub Actions and commits drafts back to
+   `main`. Add secret `OPENROUTER_API_KEY` (required), variable
+   `OPENROUTER_MODELS` (optional chain override), secret `XAI_API_KEY`
+   (optional covers) under Settings → Secrets and variables → Actions. Run it
+   by hand anytime via Actions → Autonomous Drafting Pipeline → Run workflow —
+   set *package_book* to `true` to get a full KDP package in `released/`.
 
 ## Eco impact (per REVVEL standards)
 

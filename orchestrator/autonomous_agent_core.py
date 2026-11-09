@@ -461,7 +461,8 @@ def main():
     parser.add_argument("--provider", default="auto",
                         choices=["auto", "local", "openrouter"],
                         help="Text inference: local LM Studio, OpenRouter, or auto "
-                             "(local first, OpenRouter fallback). Default: auto")
+                             "(OpenRouter chain first, LM Studio as offline fallback). "
+                             "Default: auto")
     args = parser.parse_args()
 
     # Market-length mode: cycle until the book is long enough, then package once.
