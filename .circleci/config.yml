@@ -32,7 +32,7 @@ jobs:
   runner-test:
     docker:
       - image: cimg/base:current
-    resource_class: oaudrey/oaudrey
+    resource_class: midnghtsapphire/caresse
     steps:
       - run:
           name: Confirm container runner
