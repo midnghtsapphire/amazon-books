@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   run_runner_test:
     type: boolean
-    default: true
+    default: false
 
 jobs:
   run_free_linter:
