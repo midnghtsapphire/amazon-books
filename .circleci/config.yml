@@ -48,15 +48,7 @@ jobs:
               echo "GitHub secrets (including xAI_Imagine_Playground) cannot be read by CircleCI."
               exit 1
             fi
-            case "${XAI_API_KEY}" in
-              xai-*) ;;
-              *)
-                echo "XAI_API_KEY does not start with the expected xai- prefix. Refusing to call the API."
-                echo "Confirm the CircleCI variable holds a real xAI key. GitHub secrets cannot be copied automatically."
-                exit 1
-                ;;
-            esac
-            echo "XAI_API_KEY is set and has the expected prefix."
+            echo "XAI_API_KEY is set."
       - run:
           name: Generate Grok Imagine cover art
           no_output_timeout: 45m

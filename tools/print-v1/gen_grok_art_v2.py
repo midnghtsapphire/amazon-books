@@ -5,6 +5,8 @@ import os
 import sys
 from pathlib import Path
 
+import requests
+
 HERE = Path(__file__).resolve().parent
 # Repo root when this file lives at tools/print-v1/; also accept the older box layout.
 for candidate in (HERE.parents[1], Path("/workspace/amazon-books-readonly")):
@@ -28,13 +30,59 @@ P = {
  "figs_c": "Elegant still life of figs, honey and wine in ancient Aegean ceramic vessels on a pale sandstone ledge, with a softly blurred sunlit Mediterranean courtyard wall behind, warm golden hour light, painterly realism, cream and clay background colours that stay light and soft." + NOTEXT,
 }
 
+
+def _redact(text: str) -> str:
+    """Return text with any API key value removed. Never print the key."""
+    key = os.environ.get("XAI_API_KEY") or ""
+    if key and key in text:
+        return text.replace(key, "[redacted]")
+    return text
+
+
+def generate_cover_art_xai(prompt: str, out_path: Path) -> bool:
+    """Call the same xAI endpoint as kdp_packager.generate_cover_art_xai.
+
+    On HTTP or API rejection, print the status and response body (never the
+    key) so a bad key is visible in CI logs, then return False.
+    """
+    api_key = os.environ.get("XAI_API_KEY")
+    if not api_key:
+        print("[!] XAI_API_KEY not set — Grok Imagine backend unavailable.")
+        return False
+    try:
+        resp = requests.post(
+            kp.XAI_IMAGES_URL,
+            headers={"Authorization": f"Bearer {api_key}",
+                     "Content-Type": "application/json"},
+            json={"model": kp.XAI_IMAGE_MODEL, "prompt": prompt, "n": 1,
+                  "aspect_ratio": "3:4", "resolution": "2k"},
+            timeout=300,
+        )
+    except Exception as e:
+        print(f"[!] Grok Imagine request failed: {_redact(str(e))}")
+        return False
+    if not resp.ok:
+        body = (resp.text or "").strip() or (resp.reason or "(empty body)")
+        print(f"[!] xAI API error: HTTP {resp.status_code} {resp.reason}")
+        print(_redact(body))
+        return False
+    try:
+        url = resp.json()["data"][0]["url"]
+        out_path.write_bytes(requests.get(url, timeout=120).content)
+        print(f"[+] Grok Imagine cover art generated: {out_path}")
+        return True
+    except Exception as e:
+        print(f"[!] Grok Imagine generation failed ({_redact(str(e))}).")
+        return False
+
+
 failed = 0
 for k in sys.argv[1:] or P:
     f = OUT / f"{k}_grok_imagine_raw.png"
     if f.exists():
         print("exists", f)
         continue
-    ok = kp.generate_cover_art_xai(P[k], f)
+    ok = generate_cover_art_xai(P[k], f)
     print(k, "ok" if ok else "FAILED")
     if not ok:
         failed += 1
