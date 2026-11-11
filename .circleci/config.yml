@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  run_cover_art:
+    type: boolean
+    default: false
+
 jobs:
   run_free_linter:
     docker:
@@ -24,7 +29,50 @@ jobs:
             print("[+] Complete open source baseline checks green.")
             '
 
+  grok-cover-art:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Install Python dependencies
+          command: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+      - run:
+          name: Require XAI_API_KEY without echoing it
+          command: |
+            if [ -z "${XAI_API_KEY:-}" ]; then
+              echo "XAI_API_KEY is unset."
+              echo "Set it as a CircleCI project environment variable, or add it to a CircleCI context named so this job can inherit XAI_API_KEY."
+              echo "GitHub secrets (including xAI_Imagine_Playground) cannot be read by CircleCI."
+              exit 1
+            fi
+            case "${XAI_API_KEY}" in
+              xai-*) ;;
+              *)
+                echo "XAI_API_KEY does not start with the expected xai- prefix. Refusing to call the API."
+                echo "Confirm the CircleCI variable holds a real xAI key. GitHub secrets cannot be copied automatically."
+                exit 1
+                ;;
+            esac
+            echo "XAI_API_KEY is set and has the expected prefix."
+      - run:
+          name: Generate Grok Imagine cover art
+          no_output_timeout: 45m
+          command: |
+            export GROK_ART_OUT="${PWD}/tools/print-v1/art-v2"
+            mkdir -p "${GROK_ART_OUT}"
+            python tools/print-v1/gen_grok_art_v2.py
+      - store_artifacts:
+          path: tools/print-v1/art-v2
+          destination: grok-cover-art
+
 workflows:
   local_governance_pipeline:
     jobs:
       - run_free_linter
+  grok_cover_art:
+    when: << pipeline.parameters.run_cover_art >>
+    jobs:
+      - grok-cover-art

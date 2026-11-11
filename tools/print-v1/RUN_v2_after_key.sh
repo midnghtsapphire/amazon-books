@@ -1,0 +1,15 @@
+#!/bin/bash
+# Local wrap builder (not run by the CircleCI grok-cover-art job).
+# The CI job only runs gen_grok_art_v2.py and stores the PNG artifacts.
+# This script still uses the original box paths and kdp_wrap_patched.py.
+# Usage: RUN_v2_after_key.sh <fg_art.png> <figs_art.png>   (pick the best of the generated candidates in ../art-v2/)
+# 1) python3 gen_grok_art_v2.py            -> art-v2/{fg_a,fg_b,fg_c,figs_a,figs_b,figs_c}_grok_imagine_raw.png (never overwrites)
+# 2) this script builds NEW v2 wraps (v1 files untouched)
+set -e
+FG=$1; FIGS=$2
+cd /workspace/bookcrew-publisher/print-v1-2026-11-11/tools
+BACK="Every year, founders pour savings into apps, websites, and inventory for ideas that everyone praised and no one bought. The problem is not effort. It is the order of operations.||The \$0 Startup Field Guide shows you how to go from a problem worth solving to your first paying customers before you write code, buy ads, or order stock: interview customers without pitching, run the cheapest test that could prove you wrong, then price a small pilot offer before you build.||Includes a 30-day sprint, field stories, scripts, templates, and a weekly dashboard."
+C=(--title '$0 Startup Field Guide' --title-lines '$0 STARTUP|FIELD GUIDE' --subtitle 'Validate Your Idea and Win Your First Paying Customers Before You Build' --author 'Audrey Walter-Evans' --tagline 'Book 2 of The $0 Startup series' --back-head "Don't build it yet. Find out who will pay for it first." --back-text "$BACK" --title-pt 72 --front-lift 0.0 --art "$FG" --out-dir /workspace/bookcrew-publisher/print-v1-2026-11-11/field-guide/cover)
+python3 kdp_wrap_patched.py --binding paperback --trim-w 8.5 --pages 154 --paper white "${C[@]}" --stem Field_Guide_Validate_PAPERBACK_Cover_Wrap_8.5x11_154pp_white_v2_grok
+python3 kdp_wrap_patched.py --binding hardcover --trim-w 8.25 --pages 156 --paper white "${C[@]}" --stem Field_Guide_Validate_HARDCOVER_Cover_Wrap_8.25x11_156pp_white_v2_grok
+python3 kdp_wrap_patched.py --binding paperback --trim-w 8.5 --pages 40 --paper cream --title "Figs, Wine and Honey" --title-lines "FIGS, WINE|AND HONEY" --subtitle "A Bronze Age Aegean Kitchen" --author "Audrey Walter-Evans" --tagline "Modern reconstructions from Bronze Age Aegean ingredients" --back-head "Cook the pantry the palace scribes wrote down" --back-text "Bronze Age scribes counted wine, figs, oil, grain, and honey. They did not leave recipes.||Figs, Wine and Honey builds a home kitchen from what they did write, and from the plants and animals archaeologists recover, without New World shortcuts.||Thirty modern reconstructions. Linear B sidebars with real citations. Honest modern swaps." --art "$FIGS" --front-ink 92,42,58 --accent 92,42,58 --back-ink 40,20,28 --spine-fill 92,42,58 --spine-ink 244,239,230 --back-tint 244,239,230 --back-tint-alpha 0.93 --front-lift 0.7 --out-dir /workspace/figs-wine-honey/print-v1-2026-11-11/cover --stem Figs_Wine_Honey_PAPERBACK_Cover_Wrap_8.5x11_40pp_cream_v2_grok --title-pt 78
