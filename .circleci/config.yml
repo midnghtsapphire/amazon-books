@@ -1,5 +1,10 @@
 version: 2.1
 
+parameters:
+  run_runner_test:
+    type: boolean
+    default: false
+
 jobs:
   run_free_linter:
     docker:
@@ -24,7 +29,21 @@ jobs:
             print("[+] Complete open source baseline checks green.")
             '
 
+  runner-test:
+    docker:
+      - image: cimg/base:current
+    resource_class: midnghtsapphire/caresse
+    steps:
+      - run:
+          name: Confirm container runner
+          command: echo "Hi I'm on a Container Runner!"
+
 workflows:
   local_governance_pipeline:
     jobs:
       - run_free_linter
+
+  runner-test-workflow:
+    when: << pipeline.parameters.run_runner_test >>
+    jobs:
+      - runner-test
