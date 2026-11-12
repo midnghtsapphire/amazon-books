@@ -1,5 +1,22 @@
 version: 2.1
 
+# Free CodeQL CLI on this public repository, run in CircleCI.
+# Do not add a GitHub Actions workflow and do not change repo settings
+# or rulesets in this PR. SARIF upload needs a CircleCI env var
+# CODEQL_GITHUB_TOKEN (security_events write) and is skipped until that
+# settings change is approved.
+#
+# Query packs come from the pinned official CodeQL bundle, which is
+# built from https://github.com/github/codeql (MIT). The CLI itself is
+# under the GitHub CodeQL Terms: free for public/open-source repos
+# hosted on GitHub.com, including third-party CI. Not licensed for
+# private repos without GitHub Code Security / Advanced Security.
+# See docs/CODEQL.md.
+
+parameters:
+  run_codeql:
+    type: boolean
+    default: true
 parameters:
   run_runner_test:
     type: boolean
@@ -29,6 +46,38 @@ jobs:
             print("[+] Complete open source baseline checks green.")
             '
 
+  codeql-python:
+    docker:
+      - image: cimg/python:3.11
+    environment:
+      CODEQL_BUNDLE_VERSION: "codeql-bundle-v2.27.4"
+      CODEQL_BUNDLE_ASSET: "codeql-bundle-python-linux64.tar.zst"
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - codeql-bundle-v2.27.4-python-linux64
+      - run:
+          name: Install pinned CodeQL CLI Python bundle
+          command: |
+            chmod +x scripts/codeql-python.sh
+            scripts/codeql-python.sh install
+      - save_cache:
+          key: codeql-bundle-v2.27.4-python-linux64
+          paths:
+            - /home/circleci/codeql
+      - run:
+          name: Create database and analyze with CodeQL (Python)
+          no_output_timeout: 30m
+          command: |
+            scripts/codeql-python.sh analyze
+      - store_artifacts:
+          path: /tmp/codeql-results
+          destination: codeql
+      - run:
+          name: Upload SARIF only when CODEQL_GITHUB_TOKEN is set
+          command: |
+            scripts/codeql-python.sh upload
   runner-test:
     docker:
       - image: cimg/base:current
@@ -42,6 +91,10 @@ workflows:
   local_governance_pipeline:
     jobs:
       - run_free_linter
+  codeql:
+    when: << pipeline.parameters.run_codeql >>
+    jobs:
+      - codeql-python
 
   runner-test-workflow:
     when: << pipeline.parameters.run_runner_test >>
