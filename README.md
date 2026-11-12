@@ -24,6 +24,45 @@ Governance: this project follows [REVVEL-STANDARDS.md](REVVEL-STANDARDS.md)
 
 ## Repo map
 
+### Local Markdown drop folder
+
+With Docker Desktop and the LM Studio API server running, use
+`docker compose up -d --build manuscript-inbox`. Drop a UTF-8 `.md` file
+in `local-books/inbox/` with this structure (use blank lines around headings):
+
+```markdown
+# My Book Title
+
+<!-- target-chapters: 12 -->
+
+## Chapter 1: Opening
+
+Your first chapter goes here.
+
+## Chapter 2: What happened next
+
+Your second chapter goes here.
+```
+
+The watcher preserves the input, checkpoints each added chapter, then calls
+the builder to make the interior PDF and the packager to produce the print
+cover, ebook cover, and `kdp_answers.json`. Find them under
+`local-books/output/<book>-<revision>/manuscript_workspace/`. The completed
+Markdown and `complete.json` are one level above that folder. The local
+service uses Gemma 3 4B and procedural covers. Set `BOOK_LOCAL_MODEL` before
+starting Compose to select another loaded LM Studio model.
+
+Use `docker compose logs -f manuscript-inbox` to see progress or errors.
+Restart the service to retry a failed draft from its last saved chapter, or
+edit the source to start a new revision. A manuscript that typesets below
+the builder's paperback minimum stays as a draft. Increase the target
+chapter count or add prose before retrying. To drop a large file while the
+watcher is running, copy it with a temporary extension and rename it to
+`.md` after the copy completes. The local service creates files for review
+and manual KDP upload.
+
+### Repository directories
+
 | Path | Purpose |
 | --- | --- |
 | `orchestrator/` | Autonomous drafting engine: OSINT trend hooks, SQLite dedup telemetry, Voice DNA style lock, Markdown regression linter, cron/daemon modes |

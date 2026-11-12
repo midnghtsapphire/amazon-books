@@ -1,0 +1,5 @@
+.git
+local-books/
+manuscript_workspace/
+.env
+**/__pycache__/

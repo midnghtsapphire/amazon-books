@@ -41,10 +41,10 @@ import requests
 # Offline fallback: local LM Studio (OpenAI-compatible). Tried after every
 # OpenRouter model fails (or when no OPENROUTER_API_KEY is set), and forced
 # with --provider local.
-LOCAL_API_URL = "http://localhost:1234/v1/chat/completions"
+LOCAL_API_URL = os.environ.get("BOOK_LOCAL_API_URL", "http://localhost:1234/v1/chat/completions")
 # LM Studio's API identifier for the loaded model (the ":3" is LM Studio's
 # variant suffix — check Server > Model in the LM Studio app if you swap quants).
-LOCAL_MODEL = "google/gemma-3-4b:3"
+LOCAL_MODEL = os.environ.get("BOOK_LOCAL_MODEL", "google/gemma-3-4b:3")
 
 # Primary provider: OpenRouter (same OpenAI chat-completions shape).
 # Set OPENROUTER_API_KEY in the environment. Tried first in --provider auto
