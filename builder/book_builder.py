@@ -65,7 +65,7 @@ def compile_manuscript(source: str, manuscript_path: str = "") -> str:
         p = Path(manuscript_path)
         if not p.exists():
             raise FileNotFoundError(f"Manuscript not found: {p}")
-        return p.read_text()
+        return p.read_text(encoding="utf-8")
 
     drafts = sorted(DRAFTS_DIR.glob("*.md"))
     if not drafts:
@@ -89,11 +89,16 @@ def _md_to_blocks(md: str) -> list:
         if not chunk.strip():
             continue
         stripped = chunk.strip()
+        if re.fullmatch(r"<!-- target-chapters: [1-9][0-9]* -->", stripped):
+            continue
         if stripped.startswith("```"):
             blocks.append(("code", stripped.strip("`").strip()))
         elif stripped.startswith("#"):
-            level = len(stripped) - len(stripped.lstrip("#"))
-            blocks.append((f"h{min(level, 3)}", stripped.lstrip("#").strip()))
+            heading, _, body = stripped.partition("\n")
+            level = len(heading) - len(heading.lstrip("#"))
+            blocks.append((f"h{min(level, 3)}", heading.lstrip("#").strip()))
+            if body.strip():
+                blocks.extend(_md_to_blocks(body))
         elif stripped in ("---", "***", "___"):
             blocks.append(("rule", ""))
         else:
@@ -109,6 +114,19 @@ def render_interior_pdf(md_text: str, title: str, author: str,
     """Typesets the master document as a print interior PDF.
     Returns the final page count (the value that drives spine width)."""
     pdf = FPDF(unit="mm", format=(PAGE_W_MM, PAGE_H_MM))
+    pdf.core_fonts_encoding = "cp1252"
+    serif = "times"
+    mono = "courier"
+    fonts = Path("/usr/share/fonts/truetype/dejavu")
+    if all((fonts / name).is_file() for name in (
+        "DejaVuSerif.ttf", "DejaVuSerif-Bold.ttf", "DejaVuSerif-Italic.ttf", "DejaVuSansMono.ttf"
+    )):
+        serif = "BookSerif"
+        mono = "BookMono"
+        pdf.add_font(serif, fname=fonts / "DejaVuSerif.ttf")
+        pdf.add_font(serif, style="B", fname=fonts / "DejaVuSerif-Bold.ttf")
+        pdf.add_font(serif, style="I", fname=fonts / "DejaVuSerif-Italic.ttf")
+        pdf.add_font(mono, fname=fonts / "DejaVuSansMono.ttf")
     pdf.set_auto_page_break(auto=True, margin=MARGIN_MM)
     pdf.set_margins(GUTTER_MM, MARGIN_MM, MARGIN_MM)
     usable_w = PAGE_W_MM - GUTTER_MM - MARGIN_MM
@@ -116,11 +134,11 @@ def render_interior_pdf(md_text: str, title: str, author: str,
     # Title page
     pdf.add_page()
     pdf.set_y(PAGE_H_MM * 0.35)
-    pdf.set_font("times", "B", 28)
-    pdf.multi_cell(usable_w, 12, title, align="C")
+    pdf.set_font(serif, "B", 28)
+    pdf.multi_cell(usable_w, 12, title, align="C", new_x="LMARGIN")
     pdf.ln(6)
-    pdf.set_font("times", "I", 14)
-    pdf.multi_cell(usable_w, 8, author, align="C")
+    pdf.set_font(serif, "I", 14)
+    pdf.multi_cell(usable_w, 8, author, align="C", new_x="LMARGIN")
 
     for kind, text in _md_to_blocks(md_text):
         if kind == "rule":
@@ -129,21 +147,21 @@ def render_interior_pdf(md_text: str, title: str, author: str,
         if pdf.page_no() == 1 and pdf.get_y() < MARGIN_MM + 5:
             pass  # still on title page; first body block forces a new page below
         if kind == "code":
-            pdf.set_font("courier", "", 9)
-            pdf.multi_cell(usable_w, 5, text)
+            pdf.set_font(mono, "", 9)
+            pdf.multi_cell(usable_w, 5, text, new_x="LMARGIN")
             pdf.ln(2)
             continue
         if kind.startswith("h"):
             size = {"h1": 20, "h2": 16, "h3": 13}[kind]
             pdf.add_page()
-            pdf.set_font("times", "B", size)
-            pdf.multi_cell(usable_w, 9, text)
+            pdf.set_font(serif, "B", size)
+            pdf.multi_cell(usable_w, 9, text, new_x="LMARGIN")
             pdf.ln(3)
             continue
         if pdf.get_y() <= MARGIN_MM + 1:
             pdf.add_page()
-        pdf.set_font("times", "", BODY_SIZE)
-        pdf.multi_cell(usable_w, LINE_H_MM, text)
+        pdf.set_font(serif, "", BODY_SIZE)
+        pdf.multi_cell(usable_w, LINE_H_MM, text, new_x="LMARGIN")
         pdf.ln(2)
 
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
@@ -183,7 +201,7 @@ def build_book(title: str, subtitle: str, author: str,
     master_md = BUILD_DIR / f"{slug}_manuscript.md"
     interior_pdf = BUILD_DIR / f"{slug}_interior.pdf"
     master_md.parent.mkdir(parents=True, exist_ok=True)
-    master_md.write_text(md)
+    master_md.write_text(md, encoding="utf-8")
 
     page_count = render_interior_pdf(md, title, author, interior_pdf)
     print(f"[+] Interior typeset: {interior_pdf} ({page_count} pages)")

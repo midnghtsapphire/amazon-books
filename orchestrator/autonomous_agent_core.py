@@ -41,10 +41,10 @@ import requests
 # Offline fallback: local LM Studio (OpenAI-compatible). Tried after every
 # OpenRouter model fails (or when no OPENROUTER_API_KEY is set), and forced
 # with --provider local.
-LOCAL_API_URL = "http://localhost:1234/v1/chat/completions"
+LOCAL_API_URL = os.environ.get("BOOK_LOCAL_API_URL", "http://localhost:1234/v1/chat/completions")
 # LM Studio's API identifier for the loaded model (the ":3" is LM Studio's
 # variant suffix — check Server > Model in the LM Studio app if you swap quants).
-LOCAL_MODEL = "google/gemma-3-4b:3"
+LOCAL_MODEL = os.environ.get("BOOK_LOCAL_MODEL", "google/gemma-3-4b:3")
 
 # Primary provider: OpenRouter (same OpenAI chat-completions shape).
 # Set OPENROUTER_API_KEY in the environment. Tried first in --provider auto
@@ -281,7 +281,7 @@ def ingest_research_context() -> tuple:
             "Initiate zero-input autonomous topic generation.", True)
 
 
-def call_llm(payload: dict, provider: str = "auto") -> str | None:
+def call_llm(payload: dict, provider: str = "auto", *, timeout: int = 240) -> str | None:
     """Sends the chat-completions payload down the OpenRouter model chain
     first, then falls back to the local LM Studio node when every OpenRouter
     model fails (or provider is forced). Returns the draft text, or None when
@@ -306,7 +306,7 @@ def call_llm(payload: dict, provider: str = "auto") -> str | None:
             headers["Authorization"] = f"Bearer {api_key}"
         body = {**payload, "model": model}
         try:
-            response = requests.post(url, json=body, headers=headers, timeout=240)
+            response = requests.post(url, json=body, headers=headers, timeout=timeout)
             response.raise_for_status()
             print(f"[*] Inference served by: {name} ({model})")
             return response.json()["choices"][0]["message"]["content"]

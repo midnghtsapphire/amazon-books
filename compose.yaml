@@ -1,0 +1,12 @@
+services:
+  manuscript-inbox:
+    build:
+      context: .
+      dockerfile: docker/manuscript-inbox.Dockerfile
+    restart: unless-stopped
+    environment:
+      BOOK_LOCAL_API_URL: http://host.docker.internal:1234/v1/chat/completions
+      BOOK_LOCAL_MODEL: ${BOOK_LOCAL_MODEL:-google/gemma-3-4b}
+    volumes:
+      - ./local-books:/books
+    command: ["python", "-u", "-m", "orchestrator.manuscript_inbox", "--root", "/books", "--watch"]
