@@ -17,6 +17,10 @@ parameters:
   run_codeql:
     type: boolean
     default: true
+parameters:
+  run_runner_test:
+    type: boolean
+    default: false
 
 jobs:
   run_free_linter:
@@ -74,6 +78,14 @@ jobs:
           name: Upload SARIF only when CODEQL_GITHUB_TOKEN is set
           command: |
             scripts/codeql-python.sh upload
+  runner-test:
+    docker:
+      - image: cimg/base:current
+    resource_class: midnghtsapphire/caresse
+    steps:
+      - run:
+          name: Confirm container runner
+          command: echo "Hi I'm on a Container Runner!"
 
 workflows:
   local_governance_pipeline:
@@ -83,3 +95,8 @@ workflows:
     when: << pipeline.parameters.run_codeql >>
     jobs:
       - codeql-python
+
+  runner-test-workflow:
+    when: << pipeline.parameters.run_runner_test >>
+    jobs:
+      - runner-test
