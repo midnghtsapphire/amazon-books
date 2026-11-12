@@ -1,5 +1,7 @@
 version: 2.1
 
+parameters:
+  run_cover_art:
 # Free CodeQL CLI on this public repository, run in CircleCI.
 # Do not add a GitHub Actions workflow and do not change repo settings
 # or rulesets in this PR. SARIF upload needs a CircleCI env var
@@ -46,6 +48,36 @@ jobs:
             print("[+] Complete open source baseline checks green.")
             '
 
+  grok-cover-art:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - run:
+          name: Install Python dependencies
+          command: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+      - run:
+          name: Require XAI_API_KEY without echoing it
+          command: |
+            if [ -z "${XAI_API_KEY:-}" ]; then
+              echo "XAI_API_KEY is unset."
+              echo "Set it as a CircleCI project environment variable, or add it to a CircleCI context named so this job can inherit XAI_API_KEY."
+              echo "GitHub secrets (including xAI_Imagine_Playground) cannot be read by CircleCI."
+              exit 1
+            fi
+            echo "XAI_API_KEY is set."
+      - run:
+          name: Generate Grok Imagine cover art
+          no_output_timeout: 45m
+          command: |
+            export GROK_ART_OUT="${PWD}/tools/print-v1/art-v2"
+            mkdir -p "${GROK_ART_OUT}"
+            python tools/print-v1/gen_grok_art_v2.py
+      - store_artifacts:
+          path: tools/print-v1/art-v2
+          destination: grok-cover-art
   codeql-python:
     docker:
       - image: cimg/python:3.11
@@ -91,6 +123,10 @@ workflows:
   local_governance_pipeline:
     jobs:
       - run_free_linter
+  grok_cover_art:
+    when: << pipeline.parameters.run_cover_art >>
+    jobs:
+      - grok-cover-art
   codeql:
     when: << pipeline.parameters.run_codeql >>
     jobs:
