@@ -53,6 +53,7 @@ def complete_book(source, text, output, author):
     next_number = len(CHAPTER.findall(manuscript)) + 1
 
     for number in range(next_number, count + 1):
+        print(f"[*] {source.name}: writing chapter {number}/{count}", flush=True)
         payload = {
             "messages": [
                 {"role": "system", "content": (
@@ -70,7 +71,7 @@ def complete_book(source, text, output, author):
             ],
             "max_tokens": 4096,
         }
-        result = (call_llm(payload, provider="local") or "").strip()
+        result = (call_llm(payload, provider="local", timeout=900) or "").strip()
         heading = CHAPTER.match(result)
         if (not heading or int(heading[1]) != number or len(CHAPTER.findall(result)) != 1
                 or not result[heading.end():].strip()):
